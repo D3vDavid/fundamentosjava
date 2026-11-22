@@ -1,0 +1,880 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Pizarra Hola Mundo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;600;700&display=swap">
+<style>
+/* Diseño: lienzo blanco infinito. La tarjeta de código flota a la izquierda y el árbol de conceptos crece hacia la derecha. El color identifica la categoría de cada pieza de Java. */
+:root{
+  --ink:#0f172a; --ink2:#334155; --mute:#64748b; --line:#dbe0e8; --paper:#ffffff;
+  --ui:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --head:'Space Grotesk','Inter',system-ui,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --nw:280px; color-scheme:light;
+}
+.cat-access{--c:#2563eb;--ct:#1d4ed8}
+.cat-keyword{--c:#7c3aed;--ct:#6d28d9}
+.cat-name{--c:#d97706;--ct:#b45309}
+.cat-type{--c:#0d9488;--ct:#0f766e}
+.cat-call{--c:#16a34a;--ct:#15803d}
+.cat-literal{--c:#e11d48;--ct:#be123c}
+.cat-symbol{--c:#64748b;--ct:#475569}
+
+html{height:100%;box-sizing:border-box}
+body{position:relative;height:100%;margin:0;overflow:hidden;background:var(--paper);color:var(--ink);font:14px/1.45 var(--ui)}
+button{font-family:inherit}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+#stage{position:absolute;inset:0;overflow:hidden;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;
+  background-color:#fff;background-image:radial-gradient(circle,#dde2ea 1.2px,transparent 1.4px);background-size:28px 28px}
+#stage.grabbing{cursor:grabbing}
+#world{position:absolute;left:0;top:0;width:0;height:0;transform-origin:0 0;will-change:transform}
+
+/* Tarjeta de código */
+#card{position:absolute;left:0;top:0;background:#fff;border:1.5px solid #cbd5e1;border-radius:14px;cursor:default;
+  box-shadow:0 20px 50px rgba(15,23,42,.10),0 2px 6px rgba(15,23,42,.06)}
+.bar{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--line);font:500 13px var(--mono);color:var(--mute)}
+.bar i{width:10px;height:10px;border-radius:50%;background:#e2e8f0}
+.bar b{margin-left:8px;color:var(--ink);font-weight:500}
+#code{padding:16px 28px 20px 8px;font:500 20px/34px var(--mono);white-space:pre;color:var(--ink)}
+.line{display:flex}
+.num{display:inline-block;width:2.6ch;margin-right:20px;text-align:right;color:#94a3b8;font-weight:400;user-select:none}
+.tok{color:var(--ct);border-radius:6px;padding:2px 4px;margin:0 -4px;cursor:pointer;transition:background .15s,opacity .2s,box-shadow .15s}
+.tok:hover{background:color-mix(in srgb,var(--c) 14%,#fff)}
+.tok.on{background:color-mix(in srgb,var(--c) 18%,#fff);box-shadow:inset 0 -3px 0 var(--c)}
+.tok.hl{background:color-mix(in srgb,var(--c) 30%,#fff)}
+.tok.dim{opacity:.2}
+#card.running .tok:not(.run){opacity:.28}
+.tok.run{background:color-mix(in srgb,var(--c) 22%,#fff);box-shadow:0 0 0 2px var(--c)}
+
+/* Terminal y pasos */
+#console{position:absolute;left:0;background:#fff;border:1.5px solid #cbd5e1;border-radius:14px;overflow:hidden;cursor:default;
+  box-shadow:0 20px 50px rgba(15,23,42,.10),0 2px 6px rgba(15,23,42,.06)}
+.tbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 10px 8px 16px;background:#1e293b;color:#94a3b8;font:500 13px var(--mono)}
+.term{margin:0;padding:14px 18px 16px;background:#0f172a;color:#e2e8f0;font:400 16px/1.7 var(--mono);white-space:pre}
+.term .pr{color:#64748b}
+.term .out{color:#fda4af;visibility:hidden}
+.term .out.show{visibility:visible}
+.caption{margin:0;padding:12px 16px;min-height:3.3em;color:var(--ink2);font-size:14px;line-height:1.5}
+.caption b{color:var(--ct,var(--ink));margin-right:6px}
+
+/* Botones */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:36px;padding:0 14px;border-radius:9px;border:1.5px solid var(--line);
+  background:#fff;color:var(--ink);font:600 13px var(--ui);cursor:pointer;white-space:nowrap}
+.btn:hover{background:#f1f5f9}
+.btn.run{border-color:transparent}
+.btn svg{flex:none}
+
+/* Árbol */
+#links{position:absolute;left:0;top:0;width:1px;height:1px;overflow:visible;pointer-events:none}
+.lk{fill:none;stroke:var(--c);stroke-width:2.5;stroke-linecap:round;opacity:.8;transition:opacity .35s}
+.dot{fill:var(--c);stroke:#fff;stroke-width:2}
+#nodes{position:absolute;left:0;top:0}
+.node{position:absolute;left:0;top:0;width:var(--nw);transition:opacity .22s}
+.node.leaving{opacity:0;pointer-events:none}
+@keyframes pop{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
+.nc{box-sizing:border-box;width:var(--nw);padding:12px 14px 13px;border-radius:10px;cursor:default;transform-origin:0 50%;animation:pop .35s ease-out both;
+  background:color-mix(in srgb,var(--c) 7%,#fff);border:1.5px solid color-mix(in srgb,var(--c) 48%,#fff);transition:box-shadow .15s}
+.nc.has-kids{cursor:pointer}
+.nc.has-kids:hover{box-shadow:0 8px 20px color-mix(in srgb,var(--c) 24%,transparent)}
+.nh{display:flex;align-items:flex-start;flex-wrap:wrap;gap:6px 8px;margin-bottom:5px}
+.nh h4{margin:0;flex:1 1 auto;min-width:0;font:600 14px/1.3 var(--head);color:var(--ct)}
+.chip{flex:none;max-width:100%;padding:2px 7px;border-radius:5px;background:var(--ct);color:#fff;font:600 12px/1.5 var(--mono);white-space:pre;overflow:hidden;text-overflow:ellipsis}
+.bdg{flex:none;margin-left:auto;padding:1px 8px;border-radius:999px;border:1.5px solid color-mix(in srgb,var(--c) 55%,#fff);background:#fff;color:var(--ct);font:600 12px/1.5 var(--mono)}
+.x{flex:none;border:0;background:transparent;color:var(--mute);font:500 18px/1 var(--ui);padding:0 4px;border-radius:5px;cursor:pointer}
+.x:hover{color:var(--ink);background:rgba(15,23,42,.06)}
+.nc p{margin:0;color:var(--ink2);font-size:13px;line-height:1.5}
+.nc pre{margin:9px 0 0;padding:8px 10px;background:#fff;border:1px solid color-mix(in srgb,var(--c) 30%,#fff);border-radius:7px;
+  font:400 12px/1.55 var(--mono);color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere}
+
+/* Leyenda */
+#legend{position:fixed;z-index:5;left:max(16px,env(safe-area-inset-left,0px));top:calc(14px + env(safe-area-inset-top,0px));
+  width:min(280px,calc(100vw - 32px));max-height:calc(100% - 110px);overflow:auto;background:#fff;border:1px solid var(--line);border-radius:12px;
+  box-shadow:0 10px 30px rgba(15,23,42,.08)}
+#legend summary{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;list-style:none;font:600 14px var(--head)}
+#legend summary::-webkit-details-marker{display:none}
+#legend summary::after{content:'+';color:var(--mute);font:500 18px/1 var(--ui)}
+#legend[open] summary::after{content:'\2212'}
+.lgs{display:grid;gap:2px;padding:0 8px 6px}
+.lg{display:grid;grid-template-columns:14px 1fr;column-gap:10px;align-items:center;padding:7px 8px;border:0;border-radius:8px;background:transparent;color:var(--ink);text-align:left;cursor:pointer;font:inherit}
+.lg:hover,.lg[aria-pressed="true"]{background:color-mix(in srgb,var(--c) 11%,#fff)}
+.lg .sw{grid-row:1 / span 2;width:14px;height:14px;border-radius:4px;background:var(--c)}
+.lg .nm{font-weight:600;color:var(--ct)}
+.lg .ds{color:var(--mute);font-size:12px}
+.lgnote{margin:0;padding:2px 14px 12px;color:var(--mute);font-size:12px;line-height:1.5}
+
+/* Barra inferior */
+#dock{position:fixed;z-index:5;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));
+  bottom:calc(14px + env(safe-area-inset-bottom,0px));display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px;pointer-events:none}
+#hint{pointer-events:none;max-width:100%;padding:8px 14px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--ink2);font-size:13px;
+  box-shadow:0 6px 20px rgba(15,23,42,.06);transition:opacity .6s}
+#hint.quiet{opacity:0}
+.tools{pointer-events:auto;display:flex;flex-wrap:wrap;gap:6px;margin-left:auto;padding:6px;border:1px solid var(--line);border-radius:12px;background:#fff;
+  box-shadow:0 6px 20px rgba(15,23,42,.06)}
+.tools .btn{padding:0 12px}
+.tools .zoom{min-width:58px;font-variant-numeric:tabular-nums}
+
+@media (max-width:640px){
+  #hint .more{display:none}
+  #code{font-size:17px;line-height:30px}
+}
+@media (prefers-reduced-motion:reduce){
+  .nc{animation:none}
+  .node,.lk,#hint,.tok,.nc{transition:none}
+}
+</style>
+
+<div id="stage" aria-label="Pizarra infinita con el código Java">
+  <div id="world">
+    <section id="card" aria-label="Código Java">
+      <div class="bar"><i></i><i></i><i></i><b>Main.java</b></div>
+      <div id="code"></div>
+    </section>
+    <section id="console" aria-label="Ejecución del programa">
+      <div class="tbar"><span>Terminal</span>
+        <button class="btn run" id="run" type="button"><svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 1l9 5-9 5z" fill="currentColor"/></svg><span id="runlbl">Ejecutar paso a paso</span></button>
+      </div>
+      <pre class="term"><span class="pr">$</span> javac Main.java
+<span class="pr">$</span> java Main
+<span class="out" id="out">Hola mundo</span></pre>
+      <p class="caption" id="caption">Pulsa Ejecutar para ver en qué orden recorre Java este código.</p>
+    </section>
+    <svg id="links" aria-hidden="true"></svg>
+    <div id="nodes"></div>
+  </div>
+</div>
+
+<details id="legend">
+  <summary>Colores del código</summary>
+  <div class="lgs" id="lgs"></div>
+  <p class="lgnote">Toca un color para resaltar esas piezas en el código.</p>
+</details>
+
+<div id="dock">
+  <div id="hint">Toca una parte del código para ver qué hace<span class="more">. Toca cada tarjeta para profundizar. Arrastra para moverte, rueda o pellizco para el zoom.</span></div>
+  <div class="tools">
+    <button class="btn" id="zout" type="button" aria-label="Alejar">&minus;</button>
+    <button class="btn zoom" id="zoom" type="button" aria-label="Restablecer zoom">100%</button>
+    <button class="btn" id="zin" type="button" aria-label="Acercar">+</button>
+    <button class="btn" id="fit" type="button">Ver todo</button>
+    <button class="btn" id="clear" type="button">Cerrar todo</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (s) { return document.querySelector(s); };
+  var esc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var SVGNS = 'http://www.w3.org/2000/svg';
+
+  /* ---------- Categorías de color ---------- */
+  var CATS = {
+    access:  { n: 'Acceso',            d: 'quién puede usarlo' },
+    keyword: { n: 'Palabra reservada', d: 'ya existe en Java' },
+    name:    { n: 'Identificador',     d: 'nombre de clase, método o variable' },
+    type:    { n: 'Tipo',              d: 'qué clase de dato maneja' },
+    call:    { n: 'Objeto o método',   d: 'lo que usas o llamas' },
+    literal: { n: 'Literal',           d: 'valor escrito en el código' },
+    symbol:  { n: 'Símbolo',           d: 'estructura y puntuación' }
+  };
+
+  /* ---------- Contenido: un concepto por pieza de código ---------- */
+  var N = function (t, x, o) { return Object.assign({ t: t, x: x }, o || {}); };
+
+  var CON = {
+    publicClass: { chip: 'public', cat: 'access', t: 'modificador de acceso',
+      x: 'Controla quién puede ver y usar lo que declaras. Aquí significa que cualquier otra clase puede usar Main.',
+      k: [
+        N('Los 4 niveles de acceso', 'De más abierto a más cerrado:', { k: [
+          N('public', 'Visible desde todo el programa.'),
+          N('protected', 'Visible en su paquete y en las subclases.'),
+          N('Sin modificador', 'Visible solo dentro del mismo paquete.'),
+          N('private', 'Visible solo dentro de su propia clase.')
+        ] }),
+        N('Un archivo, una clase pública', 'Una clase public debe llamarse igual que su archivo. Si no coinciden, el compilador marca error.',
+          { c: '// Archivo: Main.java\npublic class Main { }' }),
+        N('Base del encapsulamiento', 'Ocultas los detalles internos y solo expones lo necesario.', { cat: 'keyword' })
+      ] },
+
+    'class': { chip: 'class', cat: 'keyword', t: 'declara una clase',
+      x: 'Palabra reservada: no puedes usarla como nombre. Crea una clase, el molde a partir del cual se construyen objetos.',
+      k: [
+        N('Clase vs. objeto', 'La clase describe cómo es algo; el objeto es una copia concreta creada con new.', { k: [
+          N('Clase = plano', 'Define atributos (datos) y métodos (acciones).'),
+          N('Objeto = casa construida', 'Cada objeto tiene sus propios valores.', { c: 'Main m = new Main();' })
+        ] }),
+        N('Todo vive en una clase', 'En Java no hay código suelto: las variables y los métodos siempre van dentro de una clase.'),
+        N('Los 4 pilares de la POO', 'Ideas que organizan el diseño con clases:', { k: [
+          N('Encapsulamiento', 'Ocultar datos con private y exponerlos mediante métodos.'),
+          N('Herencia', 'Una clase reutiliza a otra con extends.'),
+          N('Polimorfismo', 'Un mismo mensaje, comportamientos distintos.'),
+          N('Abstracción', 'Mostrar lo esencial y ocultar el detalle.')
+        ] })
+      ] },
+
+    Main: { chip: 'Main', cat: 'name', t: 'nombre de la clase',
+      x: 'Es un identificador: el nombre que eliges para la clase. Aquí coincide con el nombre del archivo.',
+      k: [
+        N('Reglas de un identificador', 'Puede tener letras, dígitos, _ y $. No puede empezar con dígito ni ser una palabra reservada.',
+          { c: 'Main   Casa2   _x   // válidos\n2Casa  class        // inválidos' }),
+        N('Convenciones de nombres', 'No son obligatorias, pero todo el mundo las sigue:', { k: [
+          N('Clases: PascalCase', 'Cada palabra con mayúscula inicial: MiClase.'),
+          N('Métodos y variables: camelCase', 'Empieza en minúscula: miMetodo, edadActual.'),
+          N('Constantes: MAYÚSCULAS', 'Con guion bajo: VALOR_MAXIMO.')
+        ] }),
+        N('Java distingue mayúsculas', 'Main y main son nombres distintos. En este programa conviven la clase y el método.'),
+        N('Compilar y ejecutar', 'javac traduce el .java a bytecode (.class) y java lo ejecuta en la JVM.',
+          { cat: 'call', c: 'javac Main.java   // crea Main.class\njava Main         // ejecuta' })
+      ] },
+
+    classBlock: { chip: '{ }', cat: 'symbol', t: 'bloque de la clase',
+      x: 'Las llaves delimitan un bloque: todo lo que está entre ellas pertenece a la clase Main.',
+      k: [
+        N('Contenido de la clase', 'Aquí caben atributos, constructores y métodos. En este ejemplo solo hay un método: main.'),
+        N('Llaves siempre en pareja', 'Cada { necesita su }. Si falta una, el compilador marca error.',
+          { c: 'public class Main {\n    ...\n}  // cierra la clase' }),
+        N('Ámbito (scope)', 'Lo declarado dentro de un bloque solo existe dentro de él.')
+      ] },
+
+    publicMain: { chip: 'public', cat: 'access', t: 'acceso al método',
+      x: 'Aquí public permite que la JVM, que está fuera de tu clase, pueda llamar a main.',
+      k: [
+        N('Si lo declaras private', 'La JVM no puede llamar al método y el programa no arranca.'),
+        N('Mismo modificador, otro contexto', 'Es el mismo public de la clase, pero aquí controla el acceso a un método.')
+      ] },
+
+    'static': { chip: 'static', cat: 'keyword', t: 'pertenece a la clase',
+      x: 'Un miembro static pertenece a la clase, no a un objeto. Por eso la JVM puede llamar a main sin crear antes un Main.',
+      k: [
+        N('static vs. de instancia', 'Lo static se comparte; lo de instancia es de cada objeto.', { k: [
+          N('static', 'Se usa con el nombre de la clase.', { c: 'Math.max(2, 5);' }),
+          N('De instancia', 'Necesita un objeto.', { c: 'miObjeto.metodo();' })
+        ] }),
+        N('Por qué main es static', 'Al arrancar el programa todavía no existe ningún objeto. main es el punto desde el cual se crean.'),
+        N('Error típico', 'Dentro de un método static no puedes usar directamente miembros de instancia: primero necesitas un objeto.')
+      ] },
+
+    'void': { chip: 'void', cat: 'type', t: 'no devuelve nada',
+      x: 'Es el tipo de retorno del método. void significa: ejecuta sus instrucciones y termina sin entregar ningún valor.',
+      k: [
+        N('Métodos que sí devuelven', 'Declaras el tipo y usas return.',
+          { c: 'static int suma(int a, int b) {\n    return a + b;\n}' }),
+        N('Tipos de retorno posibles', 'int, double, boolean, String, un objeto… o void.'),
+        N('Por qué main es void', 'Nadie recibe su resultado: el programa termina cuando main acaba.')
+      ] },
+
+    main: { chip: 'main', cat: 'name', t: 'punto de entrada',
+      x: 'Es el nombre del método con el que empieza todo programa Java. La JVM lo busca y lo ejecuta primero.',
+      k: [
+        N('Firma clásica', 'Debe escribirse así para que la JVM lo reconozca:', { c: 'public static void main(String[] args)' }),
+        N('Un método tiene 4 partes', 'Se leen de izquierda a derecha:', { k: [
+          N('Modificadores', 'public static: quién lo ve y cómo se invoca.', { cat: 'access' }),
+          N('Retorno', 'void: no devuelve ningún valor.', { cat: 'type' }),
+          N('Nombre', 'main: lo espera así la JVM.', { cat: 'name' }),
+          N('Parámetros', '(String[] args): los datos de entrada.', { cat: 'type' })
+        ] }),
+        N('Novedad en Java reciente', 'Desde Java 25 existen formas más cortas de escribir main, pero esta firma sigue siendo la base de la mayoría de los cursos.')
+      ] },
+
+    paramParens: { chip: '( )', cat: 'symbol', t: 'lista de parámetros',
+      x: 'Los paréntesis de la declaración encierran los parámetros: los datos que el método recibe al ser llamado.',
+      k: [
+        N('Cada parámetro', 'Se escribe como tipo + nombre, separados por comas.', { c: 'static void saluda(String nombre, int veces)' }),
+        N('Sin parámetros', 'Si el método no recibe nada, los paréntesis quedan vacíos: ().'),
+        N('Siempre presentes', 'Aunque no haya parámetros, los paréntesis son obligatorios.')
+      ] },
+
+    argsType: { chip: 'String[]', cat: 'type', t: 'arreglo de textos',
+      x: 'Un tipo compuesto: String es el tipo de texto y [] indica un arreglo, es decir, varios valores del mismo tipo.',
+      k: [
+        N('String', 'Es una clase, no un tipo primitivo. Por eso se escribe con mayúscula.', { k: [
+          N('Texto entre comillas', '"Hola" es un String.'),
+          N('Tiene métodos', 'Puedes pedirle su longitud, entre otras cosas.', { c: '"Hola".length()   // 4' })
+        ] }),
+        N('Arreglo []', 'Guarda varios valores del mismo tipo. Se accede por posición y la primera es 0.',
+          { c: 'String[] dias = {"Lun", "Mar"};\ndias[0]   // "Lun"' }),
+        N('Primitivos vs. clases', 'Primitivos: int, double, boolean, char. Clases: String, Scanner y las que tú creas.')
+      ] },
+
+    args: { chip: 'args', cat: 'name', t: 'nombre del parámetro',
+      x: 'Variable que contiene los argumentos escritos al ejecutar el programa desde la terminal. Es un nombre libre, pero args es la costumbre.',
+      k: [
+        N('Cómo se llena', 'Lo que escribas después del nombre de la clase llega aquí.',
+          { c: 'java Main uno dos\n// args[0] = "uno"\n// args[1] = "dos"' }),
+        N('Si no escribes nada', 'args existe pero está vacío: args.length vale 0.'),
+        N('Nombre libre', 'Podrías llamarlo parametros o a. Lo importante es el tipo String[].')
+      ] },
+
+    mainBlock: { chip: '{ }', cat: 'symbol', t: 'cuerpo del método',
+      x: 'Entre estas llaves están las instrucciones que main ejecuta, una tras otra, de arriba hacia abajo.',
+      k: [
+        N('Ejecución secuencial', 'Java ejecuta cada instrucción en orden. Aquí solo hay una.'),
+        N('Bloques anidados', 'Este bloque está dentro del bloque de la clase, como cajas una dentro de otra.',
+          { c: '{                // caja de la clase\n    {            // caja del método\n    }\n}' }),
+        N('Cuando main termina', 'Al cerrar la llave de main, el programa finaliza.')
+      ] },
+
+    System: { chip: 'System', cat: 'call', t: 'clase del sistema',
+      x: 'Clase de la biblioteca estándar (paquete java.lang, que se importa solo) con acceso a funciones del sistema.',
+      k: [
+        N('Qué ofrece', 'Entrada y salida estándar, hora del sistema y más:', { k: [
+          N('System.out', 'Salida estándar: la pantalla.'),
+          N('System.in', 'Entrada estándar: el teclado.'),
+          N('System.err', 'Salida para mensajes de error.'),
+          N('System.currentTimeMillis()', 'Hora actual en milisegundos.')
+        ] }),
+        N('Empieza con mayúscula', 'Es una clase, y las clases usan PascalCase por convención.'),
+        N('Sin import', 'java.lang se importa solo. Otras clases, como Scanner, necesitan import.',
+          { c: 'import java.util.Scanner;' })
+      ] },
+
+    dot: { chip: '.', cat: 'symbol', t: 'operador punto',
+      x: 'Sirve para entrar a un miembro de algo: un atributo o un método de una clase o de un objeto.',
+      k: [
+        N('Se lee de izquierda a derecha', 'System.out.println se lee paso a paso:', { k: [
+          N('System → out', 'out es un atributo static de System.'),
+          N('out → println', 'println es un método del objeto out.')
+        ] }),
+        N('Otros usos', 'Es la forma de acceder a casi todo en Java.',
+          { c: 'texto.length()\nMath.max(3, 7)\nmiObjeto.nombre' })
+      ] },
+
+    out: { chip: 'out', cat: 'call', t: 'objeto de salida',
+      x: 'Atributo static de System. Es un objeto de tipo PrintStream conectado a la pantalla.',
+      k: [
+        N('Es un objeto', 'Tiene sus propios métodos para escribir:', { k: [
+          N('println', 'Imprime y baja de línea.'),
+          N('print', 'Imprime sin bajar de línea.'),
+          N('printf', 'Imprime con formato.', { c: 'System.out.printf("%d años", 20);' })
+        ] }),
+        N('Atributo static', 'Se accede con el nombre de la clase, sin usar new: System.out.')
+      ] },
+
+    println: { chip: 'println', cat: 'call', t: 'método que imprime',
+      x: 'Imprime lo que recibe y termina con un salto de línea. Su nombre viene de print line.',
+      k: [
+        N('Acepta muchos tipos', 'Texto, números, booleanos y objetos.',
+          { c: 'System.out.println(42);\nSystem.out.println(3.14);\nSystem.out.println(true);' }),
+        N('Concatenar con +', 'El operador + une textos con otros valores.',
+          { c: 'System.out.println("Edad: " + 20);\n// Edad: 20' }),
+        N('print vs. println', 'print deja el cursor en la misma línea; println pasa a la siguiente.',
+          { c: 'System.out.print("A");\nSystem.out.println("B");\n// AB' }),
+        N('Método = acción con nombre', 'Un método es un bloque de código con nombre que puedes llamar cuantas veces quieras.')
+      ] },
+
+    callParens: { chip: '( )', cat: 'symbol', t: 'llamada al método',
+      x: 'En una llamada, los paréntesis encierran los argumentos: los valores reales que se entregan al método.',
+      k: [
+        N('Parámetro vs. argumento', 'Parámetro: la variable de la declaración. Argumento: el valor que envías al llamar.',
+          { c: 'static void saluda(String nombre) { }   // parámetro\nsaluda("Ana");                         // argumento' }),
+        N('Varios argumentos', 'Se separan con comas y respetan el orden de los parámetros.'),
+        N('Sin argumentos', 'Si el método no recibe datos se escribe igual, con paréntesis vacíos.', { c: 'texto.length()' })
+      ] },
+
+    strLit: { chip: '"Hola mundo"', cat: 'literal', t: 'literal de texto',
+      x: 'Un literal es un valor escrito directamente en el código. Las comillas dobles lo convierten en un String.',
+      k: [
+        N('Otros literales', 'Cada tipo tiene su forma de escribirse:', { k: [
+          N('int', 'Números enteros.', { c: '42' }),
+          N('double', 'Decimales con punto.', { c: '3.14' }),
+          N('boolean', 'Verdadero o falso.', { c: 'true   false' }),
+          N('char', 'Un carácter entre comillas simples.', { c: "'A'" })
+        ] }),
+        N('Caracteres especiales', 'La barra invertida inicia una secuencia de escape.',
+          { c: '"Línea 1\\nLínea 2"   // salto de línea\n"Dijo \\"hola\\""     // comillas dentro' }),
+        N('Los String no cambian', 'Operaciones como toUpperCase() devuelven un String nuevo.', { c: '"hola".toUpperCase()   // "HOLA"' })
+      ] },
+
+    semi: { chip: ';', cat: 'symbol', t: 'fin de instrucción',
+      x: 'El punto y coma marca el final de una instrucción. Sin él, el compilador no sabe dónde termina.',
+      k: [
+        N('Instrucción vs. bloque', 'Las instrucciones terminan en ;. Los bloques { } no lo necesitan.',
+          { c: 'int x = 5;          // lleva ;\nif (x > 3) { }      // el bloque no' }),
+        N('Error común', 'Olvidarlo produce el mensaje «; expected», apuntando a la línea donde falta.',
+          { c: 'System.out.println("Hola")   // error' }),
+        N('Una instrucción por línea', 'Se pueden escribir varias en una línea, pero una por línea se lee mejor.')
+      ] }
+  };
+
+  /* ---------- Código en pantalla ---------- */
+  var LINES = [
+    [['public', 'publicClass'], ' ', ['class', 'class'], ' ', ['Main', 'Main'], ' ', ['{', 'classBlock']],
+    ['    ', ['public', 'publicMain'], ' ', ['static', 'static'], ' ', ['void', 'void'], ' ', ['main', 'main'], ['(', 'paramParens'], ['String[]', 'argsType'], ' ', ['args', 'args'], [')', 'paramParens'], ' ', ['{', 'mainBlock']],
+    ['        ', ['System', 'System'], ['.', 'dot'], ['out', 'out'], ['.', 'dot'], ['println', 'println'], ['(', 'callParens'], ['"Hola mundo"', 'strLit'], [')', 'callParens'], [';', 'semi']],
+    ['    ', ['}', 'mainBlock']],
+    [['}', 'classBlock']]
+  ];
+
+  var STEPS = [
+    { keys: ['publicClass', 'class', 'Main', 'classBlock'], cat: 'keyword', text: 'La JVM carga la clase Main. Todo el código vive dentro de ella.' },
+    { keys: ['publicMain', 'static', 'void', 'main', 'paramParens', 'argsType', 'args', 'mainBlock'], cat: 'access', text: 'La JVM busca el método main y lo llama. Es el punto de entrada del programa.' },
+    { keys: ['System', 'dot', 'out', 'println', 'callParens'], cat: 'call', text: 'Se ejecuta la primera instrucción: System.out.println llama al método println del objeto out.' },
+    { keys: ['strLit', 'semi'], cat: 'literal', text: 'println recibe el texto "Hola mundo" y lo imprime. El punto y coma cierra la instrucción.' },
+    { keys: ['mainBlock', 'classBlock'], cat: 'symbol', text: 'No quedan instrucciones: main termina y el programa finaliza.' }
+  ];
+
+  /* ---------- Referencias al DOM ---------- */
+  var stage = $('#stage'), world = $('#world'), card = $('#card'), codeEl = $('#code');
+  var consoleEl = $('#console'), linksEl = $('#links'), nodesEl = $('#nodes');
+  var zoomBtn = $('#zoom'), hint = $('#hint'), legend = $('#legend');
+  var runBtn = $('#run'), runLbl = $('#runlbl'), caption = $('#caption'), outEl = $('#out');
+
+  var toksByKey = {};
+  LINES.forEach(function (parts, i) {
+    var line = document.createElement('div');
+    line.className = 'line';
+    line.dataset.line = i;
+    var h = '<span class="num">' + (i + 1) + '</span><span class="src">';
+    parts.forEach(function (p) {
+      if (typeof p === 'string') { h += esc(p); return; }
+      var key = p[1];
+      h += '<span class="tok cat-' + CON[key].cat + '" data-c="' + key + '" tabindex="0" role="button" aria-pressed="false" aria-label="' + esc(p[0]) + ': ver explicación">' + esc(p[0]) + '</span>';
+    });
+    h += '</span>';
+    line.innerHTML = h;
+    codeEl.appendChild(line);
+  });
+  var allToks = Array.prototype.slice.call(codeEl.querySelectorAll('.tok'));
+  allToks.forEach(function (t) { (toksByKey[t.dataset.c] = toksByKey[t.dataset.c] || []).push(t); });
+
+  /* ---------- Modelo del árbol ---------- */
+  var BYID = {}, uid = 0;
+  function prep(n, parent, key, depth) {
+    n.id = ++uid; n.parent = parent; n.rootKey = key; n.depth = depth; n.open = false;
+    n.k = n.k || [];
+    if (!n.cat) n.cat = parent ? parent.cat : 'symbol';
+    BYID[n.id] = n;
+    n.k.forEach(function (c) { prep(c, n, key, depth + 1); });
+  }
+  var ROOTS = Object.keys(CON).map(function (key) {
+    var c = CON[key];
+    var r = { key: key, chip: c.chip, t: c.t, x: c.x, c: c.c, cat: c.cat, k: c.k || [], root: true, shown: false };
+    prep(r, null, key, 0);
+    r.toks = toksByKey[key];
+    r.line = +r.toks[0].closest('.line').dataset.line;
+    return r;
+  });
+  var ROOT = {};
+  ROOTS.forEach(function (r) { ROOT[r.key] = r; });
+
+  function reset(n) { n.k.forEach(function (c) { c.open = false; reset(c); }); }
+
+  /* ---------- Cámara ---------- */
+  var NW = 280, GX = 84, GAP = 14, TGAP = 44, FTOP = -30, MINK = 0.25, MAXK = 4;
+  var cam = { x: 0, y: 0, k: 1 };
+  var touched = false, VIS = [];
+  var cardW = 600, cardH = 260, consoleTop = 304, consoleH = 220;
+
+  function applyCam() {
+    world.style.transform = 'translate(' + cam.x + 'px,' + cam.y + 'px) scale(' + cam.k + ')';
+    var s = 28 * cam.k; while (s < 14) s *= 2;
+    stage.style.backgroundSize = s + 'px ' + s + 'px';
+    stage.style.backgroundPosition = cam.x + 'px ' + cam.y + 'px';
+    zoomBtn.textContent = Math.round(cam.k * 100) + '%';
+  }
+  var flyRaf = 0;
+  function flyTo(t) {
+    cancelAnimationFrame(flyRaf);
+    if (reduce) { cam.x = t.x; cam.y = t.y; cam.k = t.k; applyCam(); return; }
+    var f = { x: cam.x, y: cam.y, k: cam.k }, t0 = performance.now(), dur = 520;
+    (function step(now) {
+      var p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+      cam.x = f.x + (t.x - f.x) * e; cam.y = f.y + (t.y - f.y) * e; cam.k = f.k + (t.k - f.k) * e;
+      applyCam();
+      if (p < 1) flyRaf = requestAnimationFrame(step);
+    })(t0);
+  }
+  function zoomAt(px, py, f) {
+    var nk = Math.min(MAXK, Math.max(MINK, cam.k * f)), r = nk / cam.k;
+    cam.x = px - (px - cam.x) * r; cam.y = py - (py - cam.y) * r; cam.k = nk; applyCam();
+  }
+  function reveal(b) {
+    var vw = stage.clientWidth, vh = stage.clientHeight, mx = 28, mt = 76, mb = 90, k = cam.k;
+    var need = Math.min((vw - 2 * mx) / b.w, (vh - mt - mb) / b.h);
+    if (need < k) k = Math.max(need, MINK);
+    var x = cam.x, y = cam.y;
+    if (k !== cam.k) {
+      var cx = (vw / 2 - cam.x) / cam.k, cy = (vh / 2 - cam.y) / cam.k;
+      x = vw / 2 - cx * k; y = vh / 2 - cy * k;
+    }
+    var l = x + b.x * k, r = x + (b.x + b.w) * k, t = y + b.y * k, bt = y + (b.y + b.h) * k;
+    if (l < mx) x += mx - l; else if (r > vw - mx) x -= r - (vw - mx);
+    if (t < mt) y += mt - t; else if (bt > vh - mb) y -= bt - (vh - mb);
+    flyTo({ x: x, y: y, k: k });
+  }
+  function fitBox(b, m) {
+    var vw = stage.clientWidth, vh = stage.clientHeight;
+    var k = Math.max(MINK, Math.min(1, (vw - 2 * m) / b.w, (vh - 2 * m - 40) / b.h));
+    flyTo({ k: k, x: (vw - b.w * k) / 2 - b.x * k, y: (vh - b.h * k) / 2 - b.y * k });
+  }
+  function baseBox() { return { x: 0, y: 0, w: cardW, h: consoleTop + consoleH }; }
+  function measureCard() {
+    cardW = card.offsetWidth; cardH = card.offsetHeight;
+    consoleTop = cardH + 44;
+    consoleEl.style.top = consoleTop + 'px';
+    consoleEl.style.width = cardW + 'px';
+    consoleH = consoleEl.offsetHeight;
+  }
+  function fitInitial() {
+    var b = baseBox(), vw = stage.clientWidth, vh = stage.clientHeight;
+    cam.k = Math.max(MINK, Math.min(1, (vw - 32) / b.w, (vh - 150) / b.h));
+    cam.x = (vw - b.w * cam.k) / 2;
+    cam.y = Math.max(70, (vh - b.h * cam.k) / 2);
+    applyCam();
+  }
+
+  /* ---------- Distribución del árbol ---------- */
+  function collect() {
+    var out = [];
+    var w = function (n) { out.push(n); if (n.open) n.k.forEach(w); };
+    ROOTS.forEach(function (r) { if (r.shown) w(r); });
+    return out;
+  }
+  function sub(n) {
+    var kids = n.open ? n.k : [];
+    if (!kids.length) { n.cs = 0; n.sh = n.h; return n.sh; }
+    var s = 0;
+    kids.forEach(function (c, i) { s += sub(c) + (i ? GAP : 0); });
+    n.cs = s; n.sh = Math.max(n.h, s);
+    return n.sh;
+  }
+  function place(n, x, top) {
+    n.tx = x;
+    var kids = n.open ? n.k : [];
+    if (!kids.length) { n.ty = top + (n.sh - n.h) / 2; return; }
+    var cy = top + (n.sh - n.cs) / 2;
+    kids.forEach(function (c) { place(c, x + NW + GX, cy); cy += c.sh + GAP; });
+    var f = kids[0], l = kids[kids.length - 1];
+    n.ty = ((f.ty + f.h / 2) + (l.ty + l.h / 2)) / 2 - n.h / 2;
+  }
+  function layout() {
+    var top = FTOP, fx = cardW + 150;
+    ROOTS.forEach(function (r) {
+      if (!r.shown) return;
+      sub(r); place(r, fx, top); top += r.sh + TGAP;
+    });
+  }
+  function anchors() {
+    var crc = card.getBoundingClientRect(), groups = {};
+    ROOTS.forEach(function (r) {
+      if (!r.shown) return;
+      var lr = r.toks[0].closest('.line').getBoundingClientRect(), tr = r.toks[0].getBoundingClientRect();
+      r.ly = (lr.bottom - crc.top) / cam.k;
+      r.px = (tr.left + tr.width / 2 - crc.left) / cam.k;
+      (groups[r.line] = groups[r.line] || []).push(r);
+    });
+    Object.keys(groups).forEach(function (g) {
+      var arr = groups[g];
+      arr.forEach(function (r, i) { r.dy = r.ly + (i - (arr.length - 1) / 2) * 5; });
+    });
+  }
+
+  /* ---------- Nodos y conectores ---------- */
+  function enter(n) {
+    var hasK = n.k.length > 0;
+    var el = document.createElement('div');
+    el.className = 'node';
+    el.dataset.id = n.id;
+    el.innerHTML =
+      '<div class="nc cat-' + n.cat + (hasK ? ' has-kids' : '') + (n.root ? ' is-root' : '') + '"' +
+      (hasK ? ' tabindex="0" role="button" aria-expanded="false"' : '') + '>' +
+      '<div class="nh">' + (n.root ? '<code class="chip">' + esc(n.chip) + '</code>' : '') +
+      '<h4>' + esc(n.t) + '</h4>' + (hasK ? '<span class="bdg"></span>' : '') +
+      (n.root ? '<button class="x" type="button" aria-label="Cerrar este árbol">&times;</button>' : '') + '</div>' +
+      '<p>' + esc(n.x) + '</p>' + (n.c ? '<pre>' + esc(n.c) + '</pre>' : '') + '</div>';
+    nodesEl.appendChild(el);
+    n.el = el; n.inner = el.firstChild; n.bdg = el.querySelector('.bdg');
+    var p = document.createElementNS(SVGNS, 'path');
+    p.setAttribute('class', 'lk cat-' + n.cat);
+    p.style.opacity = '0';
+    linksEl.appendChild(p);
+    n.link = p;
+    requestAnimationFrame(function () { requestAnimationFrame(function () { if (n.link === p) p.style.opacity = ''; }); });
+    if (n.root) {
+      var d = document.createElementNS(SVGNS, 'circle');
+      d.setAttribute('class', 'dot cat-' + n.cat);
+      d.setAttribute('r', '4.5');
+      linksEl.appendChild(d);
+      n.dot = d;
+    }
+    n._new = true;
+  }
+  function leave(n) {
+    var el = n.el, l = n.link, d = n.dot;
+    if (el) { el.classList.add('leaving'); setTimeout(function () { el.remove(); }, 260); }
+    if (l) { l.style.opacity = '0'; setTimeout(function () { l.remove(); }, 260); }
+    if (d) d.remove();
+    n.el = n.link = n.dot = n.inner = n.bdg = null;
+  }
+  function setPos(n) { n.el.style.transform = 'translate(' + n.cx + 'px,' + n.cy + 'px)'; }
+  function drawLinks() {
+    VIS.forEach(function (n) {
+      if (!n.link) return;
+      var x1, y1;
+      if (n.parent) { x1 = n.parent.cx + NW; y1 = n.parent.cy + n.parent.h / 2; }
+      else { x1 = cardW; y1 = n.dy; }
+      var x2 = n.cx, y2 = n.cy + n.h / 2, d = Math.max(36, (x2 - x1) * 0.5);
+      n.link.setAttribute('d', (n.parent ? 'M' + x1 + ' ' + y1 : 'M' + n.px + ' ' + y1 + 'L' + x1 + ' ' + y1) + 'C' + (x1 + d) + ' ' + y1 + ' ' + (x2 - d) + ' ' + y2 + ' ' + x2 + ' ' + y2);
+    });
+  }
+  var layoutRaf = 0;
+  function tween() {
+    VIS.forEach(function (n) { n.fx = n.cx; n.fy = n.cy; });
+    cancelAnimationFrame(layoutRaf);
+    var dur = reduce ? 0 : 480, t0 = performance.now();
+    function step(now) {
+      var p = dur ? Math.min(1, (now - t0) / dur) : 1, e = 1 - Math.pow(1 - p, 3);
+      VIS.forEach(function (n) {
+        n.cx = n.fx + (n.tx - n.fx) * e; n.cy = n.fy + (n.ty - n.fy) * e; setPos(n);
+      });
+      drawLinks();
+      if (p < 1) layoutRaf = requestAnimationFrame(step);
+    }
+    layoutRaf = requestAnimationFrame(step);
+  }
+  function bbox(list, withCard, withAll) {
+    var x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+    function add(x, y, w, h) { x1 = Math.min(x1, x); y1 = Math.min(y1, y); x2 = Math.max(x2, x + w); y2 = Math.max(y2, y + h); }
+    list.forEach(function (n) { add(n.tx, n.ty, NW, n.h); });
+    if (withCard) add(0, 0, cardW, cardH);
+    if (withAll) add(0, consoleTop, cardW, consoleH);
+    return { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
+  }
+
+  function sync(focus) {
+    var prev = VIS, vis = collect();
+    var set = new Set(vis), pset = new Set(prev);
+    prev.forEach(function (n) { if (!set.has(n)) leave(n); });
+    vis.forEach(function (n) { if (!pset.has(n)) enter(n); });
+    VIS = vis;
+    vis.forEach(function (n) { n.h = n.el.offsetHeight; });
+    anchors();
+    layout();
+    vis.forEach(function (n) {
+      if (n._new) {
+        n._new = false;
+        if (n.parent) { n.cx = n.parent.cx; n.cy = n.parent.cy; }
+        else { n.cx = cardW - 24; n.cy = n.dy - n.h / 2; }
+        setPos(n);
+      }
+      if (n.dot) { n.dot.setAttribute('cx', n.px); n.dot.setAttribute('cy', n.dy); }
+      if (n.bdg) {
+        n.bdg.textContent = n.open ? '−' : '+' + n.k.length;
+        n.inner.setAttribute('aria-expanded', n.open ? 'true' : 'false');
+      }
+    });
+    tween();
+    if (focus) reveal(focus());
+  }
+
+  /* ---------- Acciones ---------- */
+  function setOn(key, on) {
+    (toksByKey[key] || []).forEach(function (t) { t.classList.toggle('on', on); t.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+  }
+  function markTouched() {
+    touched = true;
+    hint.classList.add('quiet');
+  }
+  function openRoot(r) {
+    r.shown = true; r.open = false; setOn(r.key, true);
+    sync(function () { return bbox([r], true); });
+  }
+  function closeRoot(r) {
+    r.shown = false; r.open = false; reset(r); setOn(r.key, false);
+    sync();
+  }
+  function toggleRoot(key) {
+    markTouched();
+    var r = ROOT[key];
+    if (r.shown) closeRoot(r); else openRoot(r);
+  }
+  function toggleNode(n) {
+    markTouched();
+    n.open = !n.open;
+    if (!n.open) reset(n);
+    sync(n.open ? function () { return bbox([n].concat(n.k)); } : null);
+  }
+  function closeAll() {
+    markTouched();
+    ROOTS.forEach(function (r) {
+      if (!r.shown) return;
+      r.shown = false; r.open = false; reset(r); setOn(r.key, false);
+    });
+    sync();
+    fitBox(baseBox(), 24);
+  }
+
+  codeEl.addEventListener('click', function (e) {
+    var t = e.target.closest('.tok');
+    if (t) toggleRoot(t.dataset.c);
+  });
+  codeEl.addEventListener('keydown', function (e) {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('tok')) {
+      e.preventDefault(); toggleRoot(e.target.dataset.c);
+    }
+  });
+  nodesEl.addEventListener('click', function (e) {
+    var node = e.target.closest('.node');
+    if (!node) return;
+    var n = BYID[node.dataset.id];
+    if (e.target.closest('.x')) { closeRoot(ROOT[n.rootKey]); markTouched(); return; }
+    if (e.target.closest('.nc.has-kids')) toggleNode(n);
+  });
+  nodesEl.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    var inner = e.target.closest ? e.target.closest('.nc.has-kids') : null;
+    if (!inner || e.target.closest('.x')) return;
+    e.preventDefault();
+    toggleNode(BYID[inner.parentNode.dataset.id]);
+  });
+
+  /* Resalta en el código la pieza a la que pertenece el nodo bajo el cursor */
+  var hlKey = null;
+  function setHl(key) {
+    if (hlKey === key) return;
+    if (hlKey) (toksByKey[hlKey] || []).forEach(function (t) { t.classList.remove('hl'); });
+    hlKey = key;
+    if (key) (toksByKey[key] || []).forEach(function (t) { t.classList.add('hl'); });
+  }
+  nodesEl.addEventListener('mouseover', function (e) {
+    var node = e.target.closest('.node');
+    if (node) setHl(BYID[node.dataset.id].rootKey);
+  });
+  nodesEl.addEventListener('mouseleave', function () { setHl(null); });
+
+  /* ---------- Ejecución paso a paso ---------- */
+  var step = -1;
+  function renderRun() {
+    allToks.forEach(function (t) { t.classList.remove('run'); });
+    card.classList.toggle('running', step >= 0);
+    if (step >= 0) {
+      var s = STEPS[step];
+      s.keys.forEach(function (k) { (toksByKey[k] || []).forEach(function (t) { t.classList.add('run'); }); });
+      caption.className = 'caption cat-' + s.cat;
+      caption.innerHTML = '<b>Paso ' + (step + 1) + ' de ' + STEPS.length + '</b>' + esc(s.text);
+      outEl.classList.toggle('show', step >= 3);
+      runLbl.textContent = step < STEPS.length - 1 ? 'Siguiente paso' : 'Reiniciar';
+    } else {
+      caption.className = 'caption';
+      caption.textContent = 'Pulsa Ejecutar para ver en qué orden recorre Java este código.';
+      outEl.classList.remove('show');
+      runLbl.textContent = 'Ejecutar paso a paso';
+    }
+  }
+  runBtn.addEventListener('click', function () {
+    markTouched();
+    step = step >= STEPS.length - 1 ? -1 : step + 1;
+    renderRun();
+    reveal({ x: 0, y: 0, w: cardW, h: consoleTop + consoleH });
+  });
+
+  /* ---------- Leyenda ---------- */
+  var pinned = null;
+  function setFocus(cat) {
+    allToks.forEach(function (t) { t.classList.toggle('dim', !!cat && !t.classList.contains('cat-' + cat)); });
+  }
+  var lgs = $('#lgs');
+  Object.keys(CATS).forEach(function (cat) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'lg cat-' + cat;
+    b.setAttribute('aria-pressed', 'false');
+    b.innerHTML = '<i class="sw"></i><span class="nm">' + esc(CATS[cat].n) + '</span><span class="ds">' + esc(CATS[cat].d) + '</span>';
+    b.addEventListener('mouseenter', function () { if (!pinned) setFocus(cat); });
+    b.addEventListener('mouseleave', function () { if (!pinned) setFocus(null); });
+    b.addEventListener('click', function () {
+      pinned = pinned === cat ? null : cat;
+      Array.prototype.forEach.call(lgs.children, function (c) { c.setAttribute('aria-pressed', 'false'); });
+      if (pinned) b.setAttribute('aria-pressed', 'true');
+      setFocus(pinned);
+    });
+    lgs.appendChild(b);
+  });
+  legend.open = window.innerWidth >= 1240;
+
+  /* ---------- Gestos: arrastrar, rueda y pellizco ---------- */
+  var ptrs = new Map(), pan = null, pinch = null, moved = false;
+  function rect() { return stage.getBoundingClientRect(); }
+  stage.addEventListener('pointerdown', function (e) {
+    ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (ptrs.size === 1) { pan = { sx: e.clientX, sy: e.clientY, cx: cam.x, cy: cam.y }; moved = false; }
+    else if (ptrs.size === 2) {
+      var v = Array.from(ptrs.values()), r = rect();
+      var mx = (v[0].x + v[1].x) / 2 - r.left, my = (v[0].y + v[1].y) / 2 - r.top;
+      pinch = { d: Math.hypot(v[0].x - v[1].x, v[0].y - v[1].y) || 1, k: cam.k, wx: (mx - cam.x) / cam.k, wy: (my - cam.y) / cam.k };
+      pan = null; moved = true;
+    }
+  });
+  stage.addEventListener('pointermove', function (e) {
+    if (!ptrs.has(e.pointerId)) return;
+    ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pinch && ptrs.size === 2) {
+      var v = Array.from(ptrs.values()), r = rect();
+      var d = Math.hypot(v[0].x - v[1].x, v[0].y - v[1].y) || 1;
+      var mx = (v[0].x + v[1].x) / 2 - r.left, my = (v[0].y + v[1].y) / 2 - r.top;
+      var nk = Math.min(MAXK, Math.max(MINK, pinch.k * d / pinch.d));
+      cam.k = nk; cam.x = mx - pinch.wx * nk; cam.y = my - pinch.wy * nk;
+      applyCam(); markTouched();
+    } else if (pan) {
+      var dx = e.clientX - pan.sx, dy = e.clientY - pan.sy;
+      if (!moved && Math.hypot(dx, dy) > 5) {
+        moved = true;
+        try { stage.setPointerCapture(e.pointerId); } catch (err) { /* sin captura */ }
+        stage.classList.add('grabbing');
+        cancelAnimationFrame(flyRaf);
+        markTouched();
+      }
+      if (moved) { cam.x = pan.cx + dx; cam.y = pan.cy + dy; applyCam(); }
+    }
+  });
+  function endPtr(e) {
+    ptrs.delete(e.pointerId);
+    if (ptrs.size < 2) pinch = null;
+    if (ptrs.size === 0) { pan = null; stage.classList.remove('grabbing'); setTimeout(function () { moved = false; }, 0); }
+  }
+  stage.addEventListener('pointerup', endPtr);
+  stage.addEventListener('pointercancel', endPtr);
+  stage.addEventListener('click', function (e) {
+    if (moved) { e.stopPropagation(); e.preventDefault(); }
+  }, true);
+  stage.addEventListener('wheel', function (e) {
+    e.preventDefault();
+    cancelAnimationFrame(flyRaf);
+    markTouched();
+    var r = rect(), px = e.clientX - r.left, py = e.clientY - r.top;
+    var mouseLike = e.deltaMode === 1 || (e.deltaX === 0 && Math.abs(e.deltaY) >= 40 && Number.isInteger(e.deltaY));
+    if (e.ctrlKey || mouseLike) zoomAt(px, py, Math.exp(-e.deltaY * (e.ctrlKey ? 0.025 : 0.008)));
+    else { cam.x -= e.deltaX; cam.y -= e.deltaY; applyCam(); }
+  }, { passive: false });
+
+  /* ---------- Barra de herramientas ---------- */
+  function zoomCenter(f) {
+    markTouched();
+    var r = rect();
+    zoomAt(r.width / 2, r.height / 2, f);
+  }
+  $('#zin').addEventListener('click', function () { zoomCenter(1.25); });
+  $('#zout').addEventListener('click', function () { zoomCenter(0.8); });
+  zoomBtn.addEventListener('click', function () { zoomCenter(1 / cam.k); });
+  $('#fit').addEventListener('click', function () {
+    markTouched();
+    fitBox(bbox(VIS, true, true), 24);
+  });
+  $('#clear').addEventListener('click', closeAll);
+
+  /* ---------- Arranque ---------- */
+  measureCard();
+  fitInitial();
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(function () {
+      measureCard();
+      if (!touched) fitInitial();
+      if (VIS.length) sync();
+    });
+  }
+})();
+</script>
+
+</body></html>
